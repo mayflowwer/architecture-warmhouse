@@ -34,9 +34,26 @@ entity Device {
     firmware_id : int
 }
 
-entity Scenario{
+entity Scenario {
     *id : int
+    trigger_id : int
+    device_id : int
+    action_id : int
+}
+
+entity Trigger{
+    *id : int
+    scenario_id : int
+    type : enum(time, event)
+    parameters : text
+}
+
+entity Action {
+    *id : int
+    scenario_id : int
     device_type_id : int
+    type : text
+    parameters : text
 }
 
 entity DeviceType {
@@ -64,6 +81,8 @@ Location ||--o{ Device : device
 DeviceType ||--o{ Device : type
 Firmware ||--o{ Device : firmware
 Manufacturer ||--o{ Device : manufacturer
-Scenario ||--o{ DeviceType : type
+Scenario ||--o{ Device : type
+Scenario ||--o{ Trigger : scenario
+Action ||--o{ Scenario : action 
 
 @enduml
