@@ -1,0 +1,69 @@
+@startuml
+!define ER
+
+entity User {
+    *id : int
+    username : string
+    email : string
+    password : string
+    status : enum
+}
+
+entity House{
+    *id : int
+    name : string
+    user_id : int
+}
+
+entity Location {
+    *id : int
+    name : string
+    house_id : int
+}
+
+entity Device {
+    *id : int
+    type_id : int
+    status : enum
+    model : string
+    name : string
+    serial_number : string
+    mac_address : string
+    location_id : int
+    manufacturer_id : int
+    firmware_id : int
+}
+
+entity Scenario{
+    *id : int
+    device_type_id : int
+}
+
+entity DeviceType {
+    *id : int
+    code : string
+    name : string
+}
+
+entity Manufacturer {
+    *id : int
+    name : string
+    country : string
+}
+
+entity Firmware {
+    *id : int
+    version : string
+    release_date : date
+    description : string
+}
+
+User ||--o{ House : user
+House ||--o{ Location : location
+Location ||--o{ Device : device
+DeviceType ||--o{ Device : type
+Firmware ||--o{ Device : firmware
+Manufacturer ||--o{ Device : manufacturer
+Scenario ||--o{ DeviceType : type
+
+@enduml
