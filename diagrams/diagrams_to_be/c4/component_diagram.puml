@@ -1,0 +1,53 @@
+@startuml
+!include <C4/C4_Context.puml>
+!include <C4/C4_Container.puml>
+!include <C4/C4_Component.puml>
+
+System_Boundary(webApp, "Веб-приложение") {
+    Component(deviceWebApp, "Управление устройствами", "React.js")
+    Component(scenarioWebApp, "Управление сценариями", "React.js")
+}
+System_Boundary(app, "Бэкэнд-приложение") {
+    Component(deviceAPI, "Device API", "FastAPI")
+    Component(scenarioAPI, "Scenario API", "FastAPI")
+    Component(sqlAlchemy, "ORM", "SQLAlchemy", "Доступ к данным устройств и сценариев")
+}
+Container(entitiesDB, "База данных осн. сущностей", "PostgreSQL")
+System_Ext(eventProcessor, "Event Processor", "Apache Kafka")
+System_Boundary(triggerEngineService, "Движок запуска сценариев") {
+    Component(triggerChecker, "Trigger Checker", "Golang", "Потребляет телеметрию, проверяет сценарии")
+    Component(redisCache, "Scenario Cache", "Redis", "Кэш сценариев")
+    Component(taskStartWorker, "Task Worker", "Golang", "Читает события триггеров и отправляет команды устройствам")
+}
+System_Boundary(telemetryService, "Сервис телеметрии") {
+    Component(telemetryListener, "Telemetry Listener", "Golang", "Прием телеметрии от устройств")
+    Component(telemetryWriter, "Telemetry Writer", "Golang", "Запись данных телеметрии в ClickHouse")
+}
+Container(telemertyDB, "Telemetry DB", "ClickHouse")
+System_Ext(device, "Устройство умного дома", "Лампы, ворота, отопление и проч.")
+
+
+Rel(deviceWebApp, deviceAPI, "CRUD устройств", "HTTP/JSON")
+Rel(scenarioWebApp, scenarioAPI, "CRUD сценариев", "HTTP/JSON")
+
+Rel(deviceAPI, sqlAlchemy, "Использует")
+Rel(scenarioAPI, sqlAlchemy, "Использует")
+Rel(sqlAlchemy, entitiesDB, "ORM запросы", "SQL")
+
+
+Rel(device, telemetryListener, "Отправляет телеметрию", "??")
+Rel(telemetryListener, eventProcessor, "Публикует сырые события телеметрии", "Kafka Producer")
+Rel(telemetryListener, telemetryWriter, "Передает данные для записи", "Batch/Channel")
+Rel(telemetryWriter, telemertyDB, "Пакетная запись телеметрии", "ClickHouse protocol")
+
+Rel(triggerChecker, entitiesDB, "Загружает сценарии", "SQL")
+Rel(triggerChecker, redisCache, "Обновляет кэш сценариев", "Redis")
+
+Rel(eventProcessor, triggerChecker, "Передает телеметрию", "Kafka Consumer")
+
+Rel(triggerChecker, eventProcessor, "Публикует события запуска задач", "Kafka Producer")
+Rel(eventProcessor, taskStartWorker, "Передает задачи устройствам", "Kafka Consumer")
+
+Rel(taskStartWorker, device, "Отправляет команду", "Протокол устройства")
+
+@enduml
