@@ -15,8 +15,8 @@ System_Boundary(system, "Smart Home System") {
 
 Rel(installationTechnician, switch, "Installs and performs initial system connection")
 Rel(installationTechnician, sensor, "Installs and performs initial system connection")
-Rel(user, app, "Uses for heating control and temperature monitoring")
-Rel(app, switch, "Sends command to turn on/off heating")
-Rel(sensor, app, "Sends telemetry and receives control commands")
+Rel(user, app, "Manages heating and receives house temperature")
+Rel(app, switch, "Commands to turn on/off heating")
+Rel(sensor, app, "Sends telemetry data")
 
 @enduml
