@@ -34,6 +34,36 @@ entity Device {
     firmware_id : int
 }
 
+entity DeviceData{
+    *id : int
+    device_id : int
+    device_status : int
+}
+
+entity DeviceEvent{
+    *id : int
+    device_id : int
+    event : text/json
+    created_at : datetime
+}
+
+entity DeviceTelemetry{
+    *id : int
+    device_id : int
+    telemetry_type_id: int
+    value: string
+    sent_at : datetime
+}
+
+entity TelemetryType {
+    *id : int
+    code : string
+    name : string
+    unit : string
+    data_type : string
+    description : string
+}
+
 entity Scenario {
     *id : int
     trigger_id : int
@@ -62,6 +92,13 @@ entity DeviceType {
     name : string
 }
 
+entity DeviceAction {
+    *id : int
+    device_type : int
+    code : string
+    name : string
+}
+
 entity Manufacturer {
     *id : int
     name : string
@@ -79,10 +116,15 @@ User ||--o{ House : user
 House ||--o{ Location : location
 Location ||--o{ Device : device
 DeviceType ||--o{ Device : type
+DeviceData ||--o{ Device : id
+DeviceEvent ||--o{ Device : id
+DeviceTelemetry ||--o{ Device: id
+DeviceTelemetry ||--o{ TelemetryType: type
 Firmware ||--o{ Device : firmware
 Manufacturer ||--o{ Device : manufacturer
 Scenario ||--o{ Device : type
 Scenario ||--o{ Trigger : scenario
 Action ||--o{ Scenario : action 
+DeviceType ||--o{ DeviceAction: type
 
 @enduml

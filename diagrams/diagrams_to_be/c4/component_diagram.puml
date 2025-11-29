@@ -3,51 +3,82 @@
 !include <C4/C4_Container.puml>
 !include <C4/C4_Component.puml>
 
+System_Boundary(userManagement, "Веб-приложение") {
+    Component(loginPageApp, "Веб-приложение регистрации пользователя или входа в систему", "React.js")
+    Component(keyCloakApp, "Users API", "KeyCloak")
+}  
+
+Container(usersDB, "База данных пользователей", "PostgreSQL")
+
 System_Boundary(webApp, "Веб-приложение") {
+    Component(homeWebApp, "Стартовая страница и дашбоард", "React.js")
+    Component(houseWebApp, "Управление домами и помещениями", "React.js")
     Component(deviceWebApp, "Управление устройствами", "React.js")
     Component(scenarioWebApp, "Управление сценариями", "React.js")
 }
-System_Boundary(app, "Бэкэнд-приложение") {
-    Component(deviceAPI, "Device API", "FastAPI")
-    Component(scenarioAPI, "Scenario API", "FastAPI")
-    Component(sqlAlchemy, "ORM", "SQLAlchemy", "Доступ к данным устройств и сценариев")
+
+System_Boundary(app, "API работы с основными сущностями") {
+    Component(houseAPI, "Houses and locations API", "FastAPI")
+    Component(deviceAPI, "Devices API", "FastAPI")
+    Component(scenarioAPI, "Scenarios API", "FastAPI")
+    Component(sqlAlchemy, "ORM", "SQLAlchemy")
 }
+
 Container(entitiesDB, "База данных осн. сущностей", "PostgreSQL")
+
 System_Ext(eventProcessor, "Event Processor", "Apache Kafka")
+
 System_Boundary(triggerEngineService, "Движок запуска сценариев") {
-    Component(triggerChecker, "Trigger Checker", "Golang", "Потребляет телеметрию, проверяет сценарии")
-    Component(redisCache, "Scenario Cache", "Redis", "Кэш сценариев")
-    Component(taskStartWorker, "Task Worker", "Golang", "Читает события триггеров и отправляет команды устройствам")
+    Component(triggerChecker, "Trigger Checker", "Golang")
+    Component(redisCache, "Scenario Cache", "Redis")
+    Component(taskWorker, "Task Worker", "Golang")
 }
+
 System_Boundary(telemetryService, "Сервис телеметрии") {
-    Component(telemetryListener, "Telemetry Listener", "Golang", "Прием телеметрии от устройств")
-    Component(telemetryWriter, "Telemetry Writer", "Golang", "Запись данных телеметрии в ClickHouse")
+    Component(telemetryListener, "Telemetry Listener", "Golang")
+    Component(telemetryWriter, "Telemetry Writer", "Golang")
 }
-Container(telemertyDB, "Telemetry DB", "ClickHouse")
+
+Container(telemetryDB, "Telemetry DB", "ClickHouse")
+
 System_Ext(device, "Устройство умного дома", "Лампы, ворота, отопление и проч.")
 
+Rel(loginPageApp, keyCloakApp, "Авторизация / регистрация", "OpenID Connect / OAuth2")
+Rel(homeWebApp, keyCloakApp, "Запрос токена", "OIDC")
+Rel(houseWebApp, keyCloakApp, "Валидация токена", "JWT")
+Rel(deviceWebApp, keyCloakApp, "Валидация токена", "JWT")
+Rel(scenarioWebApp, keyCloakApp, "Валидация токена", "JWT")
+Rel(houseAPI, keyCloakApp, "Проверяет токен", "JWT")
+Rel(deviceAPI, keyCloakApp, "Проверяет токен", "JWT")
+Rel(scenarioAPI, keyCloakApp, "Проверяет токен", "JWT")
+Rel(keyCloakApp, usersDB, "Хранит пользователей", "SQL")
 
+Rel(homeWebApp, houseWebApp, "Навигация")
+Rel(homeWebApp, deviceWebApp, "Навигация")
+Rel(homeWebApp, scenarioWebApp, "Навигация")
+
+Rel(houseWebApp, houseAPI, "CRUD домов", "HTTP/JSON")
 Rel(deviceWebApp, deviceAPI, "CRUD устройств", "HTTP/JSON")
 Rel(scenarioWebApp, scenarioAPI, "CRUD сценариев", "HTTP/JSON")
 
+Rel(houseAPI, sqlAlchemy, "Использует")
 Rel(deviceAPI, sqlAlchemy, "Использует")
 Rel(scenarioAPI, sqlAlchemy, "Использует")
 Rel(sqlAlchemy, entitiesDB, "ORM запросы", "SQL")
 
+Rel(scenarioAPI, eventProcessor, "Публикует события создания, изменения, удаления сценариев", "Kafka Producer scenarios.events")
+Rel(eventProcessor, triggerChecker, "Читает события создания, изменения, удаления сценариев", "Kafka Producer scenarios.events")
 
-Rel(device, telemetryListener, "Отправляет телеметрию", "??")
-Rel(telemetryListener, eventProcessor, "Публикует сырые события телеметрии", "Kafka Producer")
-Rel(telemetryListener, telemetryWriter, "Передает данные для записи", "Batch/Channel")
-Rel(telemetryWriter, telemertyDB, "Пакетная запись телеметрии", "ClickHouse protocol")
+Rel(device, telemetryListener, "Отправляет телеметрию", "MQTT/HTTP")
+Rel(telemetryListener, telemetryWriter, "Данные для записи", "Batch/Channel")
+Rel(telemetryWriter, telemetryDB, "Запись", "ClickHouse protocol")
 
-Rel(triggerChecker, entitiesDB, "Загружает сценарии", "SQL")
-Rel(triggerChecker, redisCache, "Обновляет кэш сценариев", "Redis")
+Rel(telemetryListener, eventProcessor, "Публикует события телеметрии", "Kafka Producer telemetryEvents.<device_type_id>.<event_type>")
+Rel(eventProcessor, triggerChecker, "Читает события телеметрии", "Kafka Consumer telemetryEvents.<device_type_id>.<event_type>")
 
-Rel(eventProcessor, triggerChecker, "Передает телеметрию", "Kafka Consumer")
-
-Rel(triggerChecker, eventProcessor, "Публикует события запуска задач", "Kafka Producer")
-Rel(eventProcessor, taskStartWorker, "Передает задачи устройствам", "Kafka Consumer")
-
-Rel(taskStartWorker, device, "Отправляет команду", "Протокол устройства")
+Rel(triggerChecker, redisCache, "Обновляет актуальные сценарии", "Redis")
+Rel(triggerChecker, eventProcessor, "Публикует события срабатывания триггера для старта сценария устройства", "Kafka Producer scenario.tasks.<device_type_id>")
+Rel(eventProcessor, taskWorker, "Читает события триггеров для старта сценария", "Kafka Consumer scenario.tasks.<device_type_id>")
+Rel(taskWorker, device, "Отправляет команду", "MQTT/HTTP")
 
 @enduml
