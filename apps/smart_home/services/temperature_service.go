@@ -3,7 +3,9 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -15,7 +17,7 @@ type TemperatureService struct {
 
 // TemperatureResponse represents the response from the temperature API
 type TemperatureResponse struct {
-	Value       float64   `json:"value"`
+	Value       float64   `json:"temperature"`
 	Unit        string    `json:"unit"`
 	Timestamp   time.Time `json:"timestamp"`
 	Location    string    `json:"location"`
@@ -37,7 +39,8 @@ func NewTemperatureService(baseURL string) *TemperatureService {
 
 // GetTemperature fetches temperature data for a specific location
 func (s *TemperatureService) GetTemperature(location string) (*TemperatureResponse, error) {
-	url := fmt.Sprintf("%s/temperature?location=%s", s.BaseURL, location)
+	escapedLocation := url.QueryEscape(location)
+	url := fmt.Sprintf("%s/temperature?location=%s", s.BaseURL, escapedLocation)
 
 	resp, err := s.HTTPClient.Get(url)
 	if err != nil {
@@ -53,6 +56,7 @@ func (s *TemperatureService) GetTemperature(location string) (*TemperatureRespon
 	if err := json.NewDecoder(resp.Body).Decode(&temperatureResp); err != nil {
 		return nil, fmt.Errorf("error decoding temperature response: %w", err)
 	}
+	log.Printf("Temperature data: %+v", temperatureResp)
 
 	return &temperatureResp, nil
 }
