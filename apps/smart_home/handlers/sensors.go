@@ -142,6 +142,28 @@ func (h *SensorHandler) CreateSensor(c *gin.Context) {
 		return
 	}
 
+	if sensorCreate.Type == models.Temperature {
+		temperatureData, err := h.TemperatureService.GetTemperature(sensorCreate.Location)
+		if err == nil {
+			log.Printf("Temperature data: %+v", temperatureData)
+		}
+		if err != nil {
+			log.Printf("TemperatureService error: %v", err)
+		} else {
+			err = h.DB.UpdateSensorValue(context.Background(), sensor.ID, temperatureData.Value, sensor.Status)
+			if err != nil {
+				log.Printf("Failed to update sensor with temperature data: %v", err)
+			} else {
+				sensor, err = h.DB.GetSensorByID(context.Background(), sensor.ID)
+				if err != nil {
+					log.Printf("Failed to fetch updated sensor: %v", err)
+				}
+			}
+		}
+	} else {
+		log.Printf("is not a temperature type.")
+	}
+
 	c.JSON(http.StatusCreated, sensor)
 }
 
